@@ -3,90 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Scanner</title>
+    <title>Device & Budget Scanner</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 90%; }
-        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #0056b3; }
-        .result { margin-top: 20px; text-align: left; display: none; border-top: 1px solid #eee; padding-top: 20px; }
-        .item { margin-bottom: 10px; }
-        .label { font-weight: bold; color: #555; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; color: white; font-size: 0.9rem; margin-top: 5px; }
+        :root { --primary: #2563eb; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; color: #1e293b; }
+        .container { background: white; width: 90%; max-width: 450px; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
+        h2 { margin-top: 0; color: var(--primary); }
+        .btn { background: var(--primary); color: white; border: none; padding: 14px 28px; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; transition: transform 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .results-box { margin-top: 25px; display: none; text-align: left; background: #f1f5f9; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem; }
+        .label { color: #64748b; font-weight: 500; }
+        .val { font-weight: 700; color: #0f172a; text-align: right; }
+        .budget-tag { display: inline-block; padding: 5px 12px; border-radius: 6px; color: white; font-size: 0.85rem; font-weight: bold; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Device Info Tool</h2>
-    <p>Click below to identify your smartphone specs.</p>
-    <button onclick="identifyDevice()">Scan My Device</button>
+<div class="container">
+    <h2>Phone Analyzer</h2>
+    <p>Click to detect your phone model and estimated market budget.</p>
+    <button class="btn" onclick="scanDevice()">Analyze My Phone</button>
 
-    <div id="result" class="result">
-        <div class="item"><span class="label">Brand:</span> <span id="brand">Detecting...</span></div>
-        <div class="item"><span class="label">Model:</span> <span id="model">Detecting...</span></div>
-        <div class="item"><span class="label">Platform:</span> <span id="platform">Detecting...</span></div>
-        <div class="item">
-            <span class="label">Estimated Budget:</span><br>
-            <div id="budget" class="badge">Checking...</div>
+    <div id="results" class="results-box">
+        <div class="row"><span class="label">Brand:</span> <span id="brand" class="val">Detecting...</span></div>
+        <div class="row"><span class="label">Model:</span> <span id="model" class="val">Detecting...</span></div>
+        <div class="row"><span class="label">Battery:</span> <span id="battery" class="val">--</span></div>
+        <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 15px 0;">
+        <div class="row" style="flex-direction: column; align-items: center;">
+            <span class="label">Estimated Budget Range:</span>
+            <div id="budget" class="budget-tag">Calculating...</div>
         </div>
     </div>
 </div>
 
 <script>
-async function identifyDevice() {
-    const resultDiv = document.getElementById('result');
-    resultDiv.style.display = 'block';
+async function scanDevice() {
+    document.getElementById('results').style.display = 'block';
+    
+    let brand = "Generic";
+    let model = "Unknown Model";
+    let budget = "Mid-Range";
+    let color = "#3b82f6";
 
-    let brand = "Unknown";
-    let model = "Generic Device";
-    let platform = navigator.platform;
-
-    // 1. Try modern User-Agent Client Hints (Best for Chrome/Android)
-    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+    // 1. ATTEMPT HIGH ENTROPY DETECTION (For Android/Chrome/Edge)
+    if (navigator.userAgentData) {
         try {
-            const hints = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
-            brand = navigator.userAgentData.brands[0].brand;
-            model = hints.model || "Unknown Model";
-            platform = hints.platform;
-        } catch (e) { console.log("Hints failed"); }
-    } else {
-        // 2. Fallback to parsing User Agent string
-        const ua = navigator.userAgent;
-        if (ua.match(/iPhone/i)) {
-            brand = "Apple";
-            model = "iPhone"; // Exact iPhone models are hidden by Apple for privacy
-        } else if (ua.match(/Samsung/i)) {
-            brand = "Samsung";
+            const data = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+            brand = navigator.userAgentData.brands[0].brand.replace('Not A;Brand', 'Generic');
+            model = data.model || "Unknown Android";
+        } catch (e) {
+            console.log("Permission denied for model details.");
         }
     }
 
-    document.getElementById('brand').innerText = brand;
-    document.getElementById('model').innerText = model;
-    document.getElementById('platform').innerText = platform;
-
-    // 3. Logic to "Guess" Budget Range
-    // Since there's no "price" API, we categorize based on common model names/platforms
-    const budgetEl = document.getElementById('budget');
-    let priceCategory = "Mid-Range";
-    let color = "#6c757d";
-
-    const modelName = model.toLowerCase();
-    const isIOS = /iPhone|iPad|Mac/.test(ua);
-
-    if (isIOS || modelName.includes('ultra') || modelName.includes('fold') || modelName.includes('pixel 8') || modelName.includes('pixel 9')) {
-        priceCategory = "Premium / Flagship";
-        color = "#28a745";
-    } else if (modelName.includes('lite') || modelName.includes('redmi') || modelName.includes('galaxy a')) {
-        priceCategory = "Budget Friendly";
-        color = "#ffc107";
-    } else {
-        priceCategory = "Mid-Range / Standard";
-        color = "#17a2b8";
+    // 2. FALLBACK & IPHONE DETECTION
+    const ua = navigator.userAgent;
+    if (ua.includes("iPhone")) {
+        brand = "Apple";
+        model = "iPhone (Specific model hidden by Apple)";
+        // Logic: Most iPhones are Premium
+        budget = "Premium / Flagship";
+        color = "#10b981";
     }
 
-    budgetEl.innerText = priceCategory;
-    budgetEl.style.backgroundColor = color;
+    // 3. BUDGET LOGIC BASED ON KEYWORDS
+    const lowerModel = model.toLowerCase();
+    const budgetList = {
+        premium: ["ultra", "pro max", "fold", "flip", "pixel 9", "pixel 8", "s24", "s23"],
+        budget: ["lite", "redmi", "galaxy a1", "galaxy a0", "poco", "moto g", "f-series"]
+    };
+
+    if (budget !== "Premium / Flagship") { // If not already set as iPhone
+        if (budgetList.premium.some(k => lowerModel.includes(k))) {
+            budget = "Premium / Flagship";
+            color = "#10b981";
+        } else if (budgetList.budget.some(k => lowerModel.includes(k))) {
+            budget = "Economy / Budget";
+            color = "#f59e0b";
+        } else {
+            budget = "Standard Mid-Range";
+            color = "#3b82f6";
+        }
+    }
+
+    // 4. BATTERY STATUS (Fun extra info)
+    if (navigator.getBattery) {
+        const batt = await navigator.getBattery();
+        document.getElementById('battery').innerText = `${Math.round(batt.level * 100)}% (${batt.charging ? 'Charging' : 'Discharging'})`;
+    }
+
+    // UPDATE UI
+    document.getElementById('brand').innerText = brand;
+    document.getElementById('model').innerText = model;
+    const bTag = document.getElementById('budget');
+    bTag.innerText = budget;
+    bTag.style.backgroundColor = color;
 }
 </script>
 
